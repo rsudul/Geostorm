@@ -2,8 +2,8 @@ using UnityEngine;
 
 namespace Geostorm.Infrastructure.CameraSystem
 {
-    [CreateAssetMenu(fileName = "TppCameraRigData", menuName = "Geostorm/Camera/Tpp Camera Rig Data")]
-    public sealed class TppCameraRigData : ScriptableObject
+    [CreateAssetMenu(fileName = "FppCameraRigData", menuName = "Geostorm/Camera/Fpp Camera Rig Data")]
+    public sealed class FppCameraRigData : ScriptableObject
     {
         [Header("Priority")]
         [SerializeField]
@@ -11,21 +11,15 @@ namespace Geostorm.Infrastructure.CameraSystem
         [SerializeField]
         private int _inactivePriority = 0;
 
-        [Header("View Frame")]
-        [SerializeField]
-        private bool _flattenViewFrame = true;
-
-        [Header("Orbit")]
+        [Header("Look")]
         [SerializeField]
         private float _defaultYaw = 0.0f;
         [SerializeField]
-        private float _defaultPitch = 15.0f;
+        private float _defaultPitch = 0.0f;
         [SerializeField]
-        private float _minPitch = -20.0f;
+        private float _minPitch = -80.0f;
         [SerializeField]
-        private float _maxPitch = 60.0f;
-        [SerializeField]
-        private float _distance = 10.0f;
+        private float _maxPitch = 80.0f;
         [SerializeField]
         private float _horizontalSensitivity = 0.12f;
         [SerializeField]
@@ -33,18 +27,15 @@ namespace Geostorm.Infrastructure.CameraSystem
         [SerializeField]
         private bool _invertY = false;
         [SerializeField]
-        private float _rotationSmoothTime = 0.04f;
+        private float _rotationSmoothTime = 0.02f;
 
         public int ActivePriority => _activePriority;
         public int InactivePriority => _inactivePriority;
-
-        public bool FlattenViewFrame => _flattenViewFrame;
 
         public float DefaultYaw => _defaultYaw;
         public float DefaultPitch => _defaultPitch;
         public float MinPitch => _minPitch;
         public float MaxPitch => _maxPitch;
-        public float Distance => _distance;
         public float HorizontalSensitivity => _horizontalSensitivity;
         public float VerticalSensitivity => _verticalSensitivity;
         public bool InvertY => _invertY;

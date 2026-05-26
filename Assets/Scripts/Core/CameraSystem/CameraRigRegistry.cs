@@ -7,6 +7,8 @@ namespace Geostorm.Core.CameraSystem
     {
         private readonly Dictionary<CameraModeId, ICameraRig> _rigs = new();
 
+        public IReadOnlyCollection<CameraModeId> RegisteredModeIds => _rigs.Keys;
+
         public bool TryGetRig(CameraModeId modeId, out ICameraRig rig)
         {
             if (!modeId.IsValid)
@@ -14,7 +16,6 @@ namespace Geostorm.Core.CameraSystem
                 rig = null;
                 return false;
             }
-
             return _rigs.TryGetValue(modeId, out rig);
         }
 

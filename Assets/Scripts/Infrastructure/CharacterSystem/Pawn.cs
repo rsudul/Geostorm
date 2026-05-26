@@ -10,10 +10,13 @@ namespace Geostorm.Infrastructure.CharacterSystem
     {
         private PossessionManager _possessionManager;
         private CharacterController _characterController;
+
         private Vector3 _velocity;
         private Vector3 _currentMoveIntent;
 
         private readonly List<ICommand> _commandBuffer = new();
+
+        private const float MinMoveIntentSqrMagnitude = 0.0001f;
 
         [SerializeField]
         private PawnData _data;
@@ -64,7 +67,6 @@ namespace Geostorm.Infrastructure.CharacterSystem
             for (int i = _commandBuffer.Count - 1; i >= 0; i--)
             {
                 ICommand cmd = _commandBuffer[i];
-
                 if (cmd.Execute(this) || Time.time > cmd.ExpirationTime)
                 {
                     cmd.Release();
@@ -74,6 +76,7 @@ namespace Geostorm.Infrastructure.CharacterSystem
 
             ApplyGravity();
             ApplyMovement();
+            ApplyRotation();
         }
 
         public void SetBrain(ICharacterBrain newBrain)
@@ -91,12 +94,17 @@ namespace Geostorm.Infrastructure.CharacterSystem
         {
             Vector3 movement = _currentMoveIntent * _data.MoveSpeed;
             _characterController.Move((movement + _velocity) * Time.deltaTime);
+        }
 
-            if (_currentMoveIntent != Vector3.zero)
+        private void ApplyRotation()
+        {
+            if (_currentMoveIntent.sqrMagnitude <= MinMoveIntentSqrMagnitude)
             {
-                Quaternion targetRotation = Quaternion.LookRotation(_currentMoveIntent);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10.0f);
+                return;
             }
+
+            Quaternion targetRotation = Quaternion.LookRotation(_currentMoveIntent);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * _data.RotationSpeed);
         }
 
         private void ApplyGravity()

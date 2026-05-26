@@ -9,5 +9,6 @@ namespace Geostorm.Core.CameraSystem
         void PopOverride(CameraModeId modeId, CameraTransitionRequest transitionRequest);
         void ClearOverrides(CameraTransitionRequest transitionRequest);
         void Tick(float deltaTime);
+        CameraDebugState GetDebugState();
     }
 }

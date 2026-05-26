@@ -4,8 +4,9 @@ namespace Geostorm.Core.Input
 {
     public interface IInputProvider
     {
-        InputState GetCurrentState();
         event EventHandler<NextCharacterEventArgs> OnNextCharacter;
+        event EventHandler<SwitchCameraEventArgs> OnSwitchCamera;
+        InputState GetCurrentState();
         void SwitchActionMap(string mapName);
     }
 }

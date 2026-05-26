@@ -9,12 +9,14 @@ namespace Geostorm.Infrastructure.Input
         private readonly InputSystem_Actions _inputActions;
 
         public event EventHandler<NextCharacterEventArgs> OnNextCharacter;
+        public event EventHandler<SwitchCameraEventArgs> OnSwitchCamera;
 
         public UnityInputProvider()
         {
             _inputActions = new InputSystem_Actions();
             _inputActions.Disable();
             _inputActions.Player.Next.performed += _ => OnNextCharacter?.Invoke(this, new());
+            _inputActions.Player.SwitchCamera.performed += _ => OnSwitchCamera?.Invoke(this, new());
         }
 
         public InputState GetCurrentState()

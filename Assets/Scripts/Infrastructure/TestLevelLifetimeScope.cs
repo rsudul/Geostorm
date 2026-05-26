@@ -11,6 +11,7 @@ namespace Geostorm.Infrastructure
         protected override void Configure(IContainerBuilder builder)
         {
             builder.RegisterEntryPoint<PossessionCameraBinder>();
+            builder.RegisterEntryPoint<CameraModeSwitchingController>();
 
             builder.Register<PlayerBrain>(Lifetime.Transient);
             builder.Register<AIBrain>(Lifetime.Transient);

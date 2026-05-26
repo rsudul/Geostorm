@@ -81,6 +81,11 @@ namespace Geostorm.Core.CameraSystem
             _activeRig?.Tick(deltaTime);
         }
 
+        public CameraDebugState GetDebugState()
+        {
+            return new CameraDebugState(_cameraStack.ActiveModeId, _cameraStack.BaseModeId, _cameraStack.Overrides, _rigRegistry.RegisteredModeIds);
+        }
+
         private void ApplyActiveMode(CameraTransitionRequest transitionRequest)
         {
             CameraModeId activeModeId = _cameraStack.ActiveModeId;

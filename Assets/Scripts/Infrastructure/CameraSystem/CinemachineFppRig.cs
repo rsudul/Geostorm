@@ -6,8 +6,10 @@ using Geostorm.Core.Input;
 
 namespace Geostorm.Infrastructure.CameraSystem
 {
-    public sealed class CinemachineTppRig : MonoBehaviour, ICameraRig, IViewFrameProvider
+    public sealed class CinemachineFppRig : MonoBehaviour, ICameraRig, IViewFrameProvider
     {
+        private const float MinViewDirectionSqrMagnitude = 0.0001f;
+
         private CameraRigRegistry _rigRegistry;
         private IInputProvider _inputProvider;
         private ICameraTargetProvider _targetProvider;
@@ -21,19 +23,7 @@ namespace Geostorm.Infrastructure.CameraSystem
         private float _yawVelocity;
         private float _pitchVelocity;
 
-        private const float MinViewDirectionSqrMagnitude = 0.0001f;
-
-        [Header("Cinemachine")]
-        [SerializeField]
-        private CinemachineCamera _camera;
-        [SerializeField]
-        private CinemachineFollow _follow;
-
-        [Header("Data")]
-        [SerializeField]
-        private TppCameraRigData _data;
-
-        public CameraModeId ModeId => CameraModeId.Tpp;
+        public CameraModeId ModeId => CameraModeId.Fpp;
         public bool IsActive { get; private set; }
 
         public Vector3 ViewForward
@@ -44,19 +34,12 @@ namespace Geostorm.Infrastructure.CameraSystem
                 {
                     return Vector3.forward;
                 }
-
                 Vector3 forward = _camera.transform.forward;
-
-                if (_data != null && _data.FlattenViewFrame)
-                {
-                    forward.y = 0.0f;
-                }
-
+                forward.y = 0.0f;
                 if (forward.sqrMagnitude <= MinViewDirectionSqrMagnitude)
                 {
                     return Vector3.forward;
                 }
-
                 return forward.normalized;
             }
         }
@@ -69,22 +52,23 @@ namespace Geostorm.Infrastructure.CameraSystem
                 {
                     return Vector3.right;
                 }
-
                 Vector3 right = _camera.transform.right;
-
-                if (_data != null && _data.FlattenViewFrame)
-                {
-                    right.y = 0.0f;
-                }
-
-                if (right.sqrMagnitude < MinViewDirectionSqrMagnitude)
+                right.y = 0.0f;
+                if (right.sqrMagnitude <= MinViewDirectionSqrMagnitude)
                 {
                     return Vector3.right;
                 }
-
                 return right.normalized;
             }
         }
+
+        [Header("Cinemachine")]
+        [SerializeField]
+        private CinemachineCamera _camera;
+
+        [Header("Data")]
+        [SerializeField]
+        private FppCameraRigData _data;
 
         [Inject]
         private void Construct(CameraRigRegistry rigRegistry, IInputProvider inputProvider)
@@ -100,14 +84,8 @@ namespace Geostorm.Infrastructure.CameraSystem
             {
                 _camera = GetComponent<CinemachineCamera>();
             }
-
-            if (_follow == null)
-            {
-                _follow = GetComponent<CinemachineFollow>();
-            }
-
-            ResetOrbitToDefaults();
-            ApplyOrbitOffset();
+            ResetLookToDefaults();
+            ApplyRotation();
         }
 
         private void OnEnable()
@@ -131,7 +109,7 @@ namespace Geostorm.Infrastructure.CameraSystem
         {
             IsActive = true;
             ApplyTargets();
-            ApplyOrbitOffset();
+            ApplyRotation();
             SetPriority(GetActivePriority());
         }
 
@@ -149,8 +127,8 @@ namespace Geostorm.Infrastructure.CameraSystem
             }
 
             ReadLookInput();
-            SmoothOrbit(deltaTime);
-            ApplyOrbitOffset();
+            SmoothLook(deltaTime);
+            ApplyRotation();
         }
 
         private void ReadLookInput()
@@ -174,7 +152,7 @@ namespace Geostorm.Infrastructure.CameraSystem
             _targetPitch = Mathf.Clamp(_targetPitch, GetMinPitch(), GetMaxPitch());
         }
 
-        private void SmoothOrbit(float deltaTime)
+        private void SmoothLook(float deltaTime)
         {
             float smoothTime = GetRotationSmoothTime();
             if (smoothTime <= 0.0f)
@@ -195,34 +173,33 @@ namespace Geostorm.Infrastructure.CameraSystem
                 return;
             }
 
-            if (_targetProvider.TryGetTarget(CameraTargetType.Follow, out Transform followTarget))
+            if (_targetProvider.TryGetTarget(CameraTargetType.Head, out Transform headTarget))
             {
-                _camera.Follow = followTarget;
+                _camera.Follow = headTarget;
+                _camera.LookAt = null;
+                return;
             }
 
             if (_targetProvider.TryGetTarget(CameraTargetType.LookAt, out Transform lookAtTarget))
             {
-                _camera.LookAt = lookAtTarget;
+                _camera.Follow = lookAtTarget;
+                _camera.LookAt = null;
             }
         }
 
-        private void ApplyOrbitOffset()
+        private void ApplyRotation()
         {
-            if (_follow == null)
+            if (_camera == null)
             {
                 return;
             }
-
-            Quaternion orbitRotation = Quaternion.Euler(_currentPitch, _currentYaw, 0.0f);
-            Vector3 offset = orbitRotation * Vector3.back * GetDistance();
-
-            _follow.FollowOffset = offset;
+            _camera.transform.rotation = Quaternion.Euler(_currentPitch, _currentYaw, 0.0f);
         }
 
-        private void ResetOrbitToDefaults()
+        private void ResetLookToDefaults()
         {
             float defaultYaw = _data != null ? _data.DefaultYaw : 0.0f;
-            float defaultPitch = _data != null ? _data.DefaultPitch : 15.0f;
+            float defaultPitch = _data != null ? _data.DefaultPitch : 0.0f;
             defaultPitch = Mathf.Clamp(defaultPitch, GetMinPitch(), GetMaxPitch());
 
             _targetYaw = defaultYaw;
@@ -284,17 +261,12 @@ namespace Geostorm.Infrastructure.CameraSystem
 
         private float GetMinPitch()
         {
-            return _data != null ? _data.MinPitch : -20.0f;
+            return _data != null ? _data.MinPitch : -80.0f;
         }
 
         private float GetMaxPitch()
         {
-            return _data != null ? _data.MaxPitch : 60.0f;
-        }
-
-        private float GetDistance()
-        {
-            return _data != null ? _data.Distance : 10.0f;
+            return _data != null ? _data.MaxPitch : 80.0f;
         }
 
         private bool GetInvertY()
@@ -304,14 +276,13 @@ namespace Geostorm.Infrastructure.CameraSystem
 
         private float GetRotationSmoothTime()
         {
-            return _data != null ? _data.RotationSmoothTime : 0.04f;
+            return _data != null ? _data.RotationSmoothTime : 0.02f;
         }
 
 #if UNITY_EDITOR
         private void Reset()
         {
             _camera = GetComponent<CinemachineCamera>();
-            _follow = GetComponent<CinemachineFollow>();
         }
 
         private void OnValidate()
@@ -321,14 +292,9 @@ namespace Geostorm.Infrastructure.CameraSystem
                 _camera = GetComponent<CinemachineCamera>();
             }
 
-            if (_follow == null)
-            {
-                _follow = GetComponent<CinemachineFollow>();
-            }
-
             if (_data != null && _data.MinPitch > _data.MaxPitch)
             {
-                Debug.LogWarning($"{nameof(TppCameraRigData)} has MinPitch greater than MaxPitch.", _data);
+                Debug.LogWarning($"{nameof(FppCameraRigData)} has MinPitch greater than MaxPitch.");
             }
         }
 #endif

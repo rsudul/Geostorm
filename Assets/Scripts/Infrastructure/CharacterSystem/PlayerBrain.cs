@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using Geostorm.Core.CameraSystem;
 using Geostorm.Core.CharacterSystem;
 using Geostorm.Core.Input;
 
@@ -7,12 +8,16 @@ namespace Geostorm.Infrastructure.CharacterSystem
 {
     public class PlayerBrain : ICharacterBrain
     {
-        private IInputProvider _inputProvider;
+        private readonly IInputProvider _inputProvider;
+        private readonly IViewFrameProvider _viewFrameProvider;
         private bool _isActive;
 
-        public PlayerBrain(IInputProvider inputProvider)
+        private const float MinMoveDirectionSqrMagnitude = 0.0001f;
+
+        public PlayerBrain(IInputProvider inputProvider, IViewFrameProvider viewFrameProvider)
         {
             _inputProvider = inputProvider;
+            _viewFrameProvider = viewFrameProvider;
         }
 
         public void OnPossess(IPawn targetPawn, object brainContext = null)
@@ -34,16 +39,33 @@ namespace Geostorm.Infrastructure.CharacterSystem
 
             InputState currentState = _inputProvider.GetCurrentState();
 
-            Vector3 direction = new Vector3(currentState.MoveInput.x, 0.0f, currentState.MoveInput.y);
-            if (direction.sqrMagnitude > 1.0f)
+            Vector2 moveInput = currentState.MoveInput;
+            if (moveInput.sqrMagnitude > 1.0f)
             {
-                direction.Normalize();
+                moveInput.Normalize();
             }
 
-            if (direction != Vector3.zero)
+            Vector3 viewForward = GetFlattenedDirection(_viewFrameProvider.ViewForward, Vector3.forward);
+            Vector3 viewRight = GetFlattenedDirection(_viewFrameProvider.ViewRight, Vector3.right);
+
+            Vector3 direction = viewRight * moveInput.x + viewForward * moveInput.y;
+            if (direction.sqrMagnitude <= MinMoveDirectionSqrMagnitude)
             {
-                commandBuffer.Add(MoveCommand.Get(direction));
+                return;
             }
+
+            direction.Normalize();
+            commandBuffer.Add(MoveCommand.Get(direction));
+        }
+
+        private static Vector3 GetFlattenedDirection(Vector3 direction, Vector3 fallback)
+        {
+            direction.y = 0.0f;
+            if (direction.sqrMagnitude <= MinMoveDirectionSqrMagnitude)
+            {
+                return fallback;
+            }
+            return direction.normalized;
         }
     }
 }

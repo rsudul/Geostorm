@@ -3,7 +3,7 @@ using Geostorm.Core.CameraSystem;
 
 namespace Geostorm.Infrastructure.CameraSystem
 {
-    public sealed class CameraSystemUpdater : ITickable
+    public sealed class CameraSystemUpdater : ILateTickable
     {
         private readonly ICameraDirector _cameraDirector;
 
@@ -12,7 +12,7 @@ namespace Geostorm.Infrastructure.CameraSystem
             _cameraDirector = cameraDirector;
         }
 
-        public void Tick()
+        public void LateTick()
         {
             _cameraDirector.Tick(UnityEngine.Time.deltaTime);
         }

@@ -8,22 +8,19 @@ namespace Geostorm.Infrastructure.Input
     {
         private readonly InputSystem_Actions _inputActions;
 
-        public event EventHandler<NextCharacterEventArgs> OnNextCharacter;
-        public event EventHandler<SwitchCameraEventArgs> OnSwitchCamera;
-
         public UnityInputProvider()
         {
             _inputActions = new InputSystem_Actions();
             _inputActions.Disable();
-            _inputActions.Player.Next.performed += _ => OnNextCharacter?.Invoke(this, new());
-            _inputActions.Player.SwitchCamera.performed += _ => OnSwitchCamera?.Invoke(this, new());
         }
 
         public InputState GetCurrentState()
         {
             Vector2 move = _inputActions.Player.Move.ReadValue<Vector2>();
             Vector2 look = _inputActions.Player.Look.ReadValue<Vector2>();
-            return new InputState(move, look);
+            bool switchCameraPressed = _inputActions.Player.SwitchCamera.WasPressedThisFrame();
+            bool nextCharacterPressed = _inputActions.Player.Next.WasPressedThisFrame();
+            return new InputState(move, look, switchCameraPressed, nextCharacterPressed);
         }
 
         public void SwitchActionMap(string mapName)

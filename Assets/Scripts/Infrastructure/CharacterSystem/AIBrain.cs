@@ -11,6 +11,8 @@ namespace Geostorm.Infrastructure.CharacterSystem
         private IPawn _targetPawn;
         private NavMeshPath _path;
 
+        private bool _forceApplyRotationMode;
+
         public AIBrain()
         {
             _path = new NavMeshPath();
@@ -20,12 +22,14 @@ namespace Geostorm.Infrastructure.CharacterSystem
         {
             _controlledPawn = targetPawn;
             _targetPawn = context as IPawn;
+            _forceApplyRotationMode = true;
         }
 
         public void OnUnpossess()
         {
             _controlledPawn = null;
             _targetPawn = null;
+            _forceApplyRotationMode = false;
         }
 
         public void GenerateCommands(List<ICommand> commandBuffer)
@@ -33,6 +37,12 @@ namespace Geostorm.Infrastructure.CharacterSystem
             if (_controlledPawn == null || _targetPawn == null)
             {
                 return;
+            }
+
+            if (_forceApplyRotationMode)
+            {
+                _forceApplyRotationMode = false;
+                commandBuffer.Add(SetRotationModeCommand.Get(PawnRotationMode.MovementDirection));
             }
 
             if (NavMesh.SamplePosition(_controlledPawn.Position, out NavMeshHit startHit, 2.0f, NavMesh.AllAreas) &&

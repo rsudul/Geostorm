@@ -2,14 +2,13 @@ using UnityEngine;
 using Unity.Cinemachine;
 using VContainer;
 using Geostorm.Core.CameraSystem;
-using Geostorm.Core.Input;
 
 namespace Geostorm.Infrastructure.CameraSystem
 {
     public sealed class CinemachineTppRig : MonoBehaviour, ICameraRig, IViewFrameProvider
     {
         private CameraRigRegistry _rigRegistry;
-        private IInputProvider _inputProvider;
+        private ICameraLookInput _cameraLookInput;
         private ICameraTargetProvider _targetProvider;
 
         private bool _isRegistered;
@@ -87,10 +86,10 @@ namespace Geostorm.Infrastructure.CameraSystem
         }
 
         [Inject]
-        private void Construct(CameraRigRegistry rigRegistry, IInputProvider inputProvider)
+        private void Construct(CameraRigRegistry rigRegistry, ICameraLookInput cameraLookInput)
         {
             _rigRegistry = rigRegistry;
-            _inputProvider = inputProvider;
+            _cameraLookInput = cameraLookInput;
             RegisterIfPossible();
         }
 
@@ -155,13 +154,12 @@ namespace Geostorm.Infrastructure.CameraSystem
 
         private void ReadLookInput()
         {
-            if (_inputProvider == null)
+            if (_cameraLookInput == null)
             {
                 return;
             }
 
-            InputState currentState = _inputProvider.GetCurrentState();
-            Vector2 lookInput = currentState.LookInput;
+            Vector2 lookInput = _cameraLookInput.LookInput;
             if (lookInput.sqrMagnitude <= 0.0f)
             {
                 return;

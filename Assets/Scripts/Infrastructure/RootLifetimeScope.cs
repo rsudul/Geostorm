@@ -29,6 +29,7 @@ namespace Geostorm.Infrastructure
             builder.Register<CameraStack>(Lifetime.Singleton);
             builder.Register<CameraRigRegistry>(Lifetime.Singleton);
             builder.Register<CameraDirector>(Lifetime.Singleton).As<ICameraDirector>().As<IViewFrameProvider>().AsSelf();
+            builder.Register<CameraLookInputState>(Lifetime.Singleton).AsSelf().As<ICameraLookInput>().As<ICameraLookInputWriter>();
             builder.RegisterEntryPoint<CameraSystemUpdater>();
 
             builder.Register<UnitySceneLoader>(Lifetime.Singleton).As<ISceneLoader>();

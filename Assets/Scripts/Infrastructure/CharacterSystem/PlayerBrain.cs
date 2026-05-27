@@ -6,40 +6,86 @@ using Geostorm.Core.Input;
 
 namespace Geostorm.Infrastructure.CharacterSystem
 {
-    public class PlayerBrain : ICharacterBrain
+    public class PlayerBrain : ICharacterBrain, IPlayerInputIntentReceiver
     {
-        private readonly IInputProvider _inputProvider;
         private readonly IViewFrameProvider _viewFrameProvider;
+        private readonly ICameraDirector _cameraDirector;
+
         private bool _isActive;
+        private Vector2 _moveInput;
+        private Vector2 _lookInput;
+
+        private PawnRotationMode _currentRotationMode = PawnRotationMode.MovementDirection;
+        private bool _forceApplyRotationMode;
 
         private const float MinMoveDirectionSqrMagnitude = 0.0001f;
+        private const float MinYawInputAbs = 0.0001f;
 
-        public PlayerBrain(IInputProvider inputProvider, IViewFrameProvider viewFrameProvider)
+        public Vector2 LookInput => _lookInput;
+
+        public PlayerBrain(IViewFrameProvider viewFrameProvider, ICameraDirector cameraDirector)
         {
-            _inputProvider = inputProvider;
             _viewFrameProvider = viewFrameProvider;
+            _cameraDirector = cameraDirector;
         }
 
         public void OnPossess(IPawn targetPawn, object brainContext = null)
         {
             _isActive = true;
+            _forceApplyRotationMode = true;
         }
 
         public void OnUnpossess()
         {
             _isActive = false;
+            ClearInput();
+            _forceApplyRotationMode = true;
+        }
+
+        public void SetMoveInput(Vector2 moveInput)
+        {
+            _moveInput = moveInput;
+        }
+
+        public void SetLookInput(Vector2 lookInput)
+        {
+            _lookInput = lookInput;
+        }
+
+        public void ClearInput()
+        {
+            _moveInput = Vector2.zero;
+            _lookInput = Vector2.zero;
         }
 
         public void GenerateCommands(List<ICommand> commandBuffer)
         {
-            if (!_isActive || _inputProvider == null)
+            if (!_isActive)
             {
                 return;
             }
 
-            InputState currentState = _inputProvider.GetCurrentState();
+            bool isFpp = _cameraDirector.CurrentModeId == CameraModeId.Fpp;
+            PawnRotationMode desiredRotationMode = isFpp ? PawnRotationMode.ManualYaw : PawnRotationMode.MovementDirection;
 
-            Vector2 moveInput = currentState.MoveInput;
+            if (_forceApplyRotationMode || desiredRotationMode != _currentRotationMode)
+            {
+                _currentRotationMode = desiredRotationMode;
+                _forceApplyRotationMode = false;
+                commandBuffer.Add(SetRotationModeCommand.Get(_currentRotationMode));
+            }
+
+            if (isFpp && Mathf.Abs(_lookInput.x) > MinYawInputAbs)
+            {
+                commandBuffer.Add(YawInputCommand.Get(_lookInput.x));
+            }
+
+            GenerateMovementCommand(commandBuffer);
+        }
+
+        private void GenerateMovementCommand(List<ICommand> commandBuffer)
+        {
+            Vector2 moveInput = _moveInput;
             if (moveInput.sqrMagnitude > 1.0f)
             {
                 moveInput.Normalize();
@@ -53,7 +99,6 @@ namespace Geostorm.Infrastructure.CharacterSystem
             {
                 return;
             }
-
             direction.Normalize();
             commandBuffer.Add(MoveCommand.Get(direction));
         }

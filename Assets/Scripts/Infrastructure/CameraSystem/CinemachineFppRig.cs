@@ -2,7 +2,6 @@ using UnityEngine;
 using Unity.Cinemachine;
 using VContainer;
 using Geostorm.Core.CameraSystem;
-using Geostorm.Core.Input;
 
 namespace Geostorm.Infrastructure.CameraSystem
 {
@@ -11,16 +10,15 @@ namespace Geostorm.Infrastructure.CameraSystem
         private const float MinViewDirectionSqrMagnitude = 0.0001f;
 
         private CameraRigRegistry _rigRegistry;
-        private IInputProvider _inputProvider;
+        private ICameraLookInput _cameraLookInput;
         private ICameraTargetProvider _targetProvider;
+
+        private Transform _yawSource;
 
         private bool _isRegistered;
 
-        private float _targetYaw;
         private float _targetPitch;
-        private float _currentYaw;
         private float _currentPitch;
-        private float _yawVelocity;
         private float _pitchVelocity;
 
         public CameraModeId ModeId => CameraModeId.Fpp;
@@ -71,10 +69,10 @@ namespace Geostorm.Infrastructure.CameraSystem
         private FppCameraRigData _data;
 
         [Inject]
-        private void Construct(CameraRigRegistry rigRegistry, IInputProvider inputProvider)
+        private void Construct(CameraRigRegistry rigRegistry, ICameraLookInput cameraLookInput)
         {
             _rigRegistry = rigRegistry;
-            _inputProvider = inputProvider;
+            _cameraLookInput = cameraLookInput;
             RegisterIfPossible();
         }
 
@@ -133,21 +131,18 @@ namespace Geostorm.Infrastructure.CameraSystem
 
         private void ReadLookInput()
         {
-            if (_inputProvider == null)
+            if (_cameraLookInput == null)
             {
                 return;
             }
 
-            InputState currentState = _inputProvider.GetCurrentState();
-            Vector2 lookInput = currentState.LookInput;
-            if (lookInput.sqrMagnitude <= 0.0f)
+            Vector2 lookInput = _cameraLookInput.LookInput;
+            if (Mathf.Abs(lookInput.y) <= 0.0001f)
             {
                 return;
             }
 
             float verticalSign = GetInvertY() ? 1.0f : -1.0f;
-
-            _targetYaw += lookInput.x * GetHorizontalSensitivity();
             _targetPitch += lookInput.y * GetVerticalSensitivity() * verticalSign;
             _targetPitch = Mathf.Clamp(_targetPitch, GetMinPitch(), GetMaxPitch());
         }
@@ -157,12 +152,9 @@ namespace Geostorm.Infrastructure.CameraSystem
             float smoothTime = GetRotationSmoothTime();
             if (smoothTime <= 0.0f)
             {
-                _currentYaw = _targetYaw;
                 _currentPitch = _targetPitch;
                 return;
             }
-
-            _currentYaw = Mathf.SmoothDampAngle(_currentYaw, _targetYaw, ref _yawVelocity, smoothTime, Mathf.Infinity, deltaTime);
             _currentPitch = Mathf.SmoothDamp(_currentPitch, _targetPitch, ref _pitchVelocity, smoothTime, Mathf.Infinity, deltaTime);
         }
 
@@ -171,6 +163,11 @@ namespace Geostorm.Infrastructure.CameraSystem
             if (_camera == null || _targetProvider == null)
             {
                 return;
+            }
+
+            if (_targetProvider.TryGetTarget(CameraTargetType.Root, out Transform rootTarget))
+            {
+                _yawSource = rootTarget;
             }
 
             if (_targetProvider.TryGetTarget(CameraTargetType.Head, out Transform headTarget))
@@ -189,24 +186,21 @@ namespace Geostorm.Infrastructure.CameraSystem
 
         private void ApplyRotation()
         {
-            if (_camera == null)
+            if (_camera == null || _yawSource == null)
             {
                 return;
             }
-            _camera.transform.rotation = Quaternion.Euler(_currentPitch, _currentYaw, 0.0f);
+            float yaw = _yawSource.eulerAngles.y;
+            _camera.transform.rotation = Quaternion.Euler(_currentPitch, yaw, 0.0f);
         }
 
         private void ResetLookToDefaults()
         {
-            float defaultYaw = _data != null ? _data.DefaultYaw : 0.0f;
             float defaultPitch = _data != null ? _data.DefaultPitch : 0.0f;
             defaultPitch = Mathf.Clamp(defaultPitch, GetMinPitch(), GetMaxPitch());
 
-            _targetYaw = defaultYaw;
             _targetPitch = defaultPitch;
-            _currentYaw = defaultYaw;
             _currentPitch = defaultPitch;
-            _yawVelocity = 0.0f;
             _pitchVelocity = 0.0f;
         }
 
@@ -247,11 +241,6 @@ namespace Geostorm.Infrastructure.CameraSystem
         private int GetInactivePriority()
         {
             return _data != null ? _data.InactivePriority : 0;
-        }
-
-        private float GetHorizontalSensitivity()
-        {
-            return _data != null ? _data.HorizontalSensitivity : 0.12f;
         }
 
         private float GetVerticalSensitivity()

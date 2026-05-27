@@ -13,6 +13,8 @@ namespace Geostorm.Infrastructure.CharacterSystem
 
         private Vector3 _velocity;
         private Vector3 _currentMoveIntent;
+        private PawnRotationMode _rotationMode = PawnRotationMode.MovementDirection;
+        private float _yawInput;
 
         private readonly List<ICommand> _commandBuffer = new();
 
@@ -63,6 +65,7 @@ namespace Geostorm.Infrastructure.CharacterSystem
             }
 
             _currentMoveIntent = Vector3.zero;
+            _yawInput = 0.0f;
 
             for (int i = _commandBuffer.Count - 1; i >= 0; i--)
             {
@@ -90,6 +93,16 @@ namespace Geostorm.Infrastructure.CharacterSystem
             _currentMoveIntent = direction;
         }
 
+        public void SetRotationMode(PawnRotationMode rotationMode)
+        {
+            _rotationMode = rotationMode;
+        }
+
+        public void AddYawInput(float yawInput)
+        {
+            _yawInput += yawInput;
+        }
+
         private void ApplyMovement()
         {
             Vector3 movement = _currentMoveIntent * _data.MoveSpeed;
@@ -97,6 +110,27 @@ namespace Geostorm.Infrastructure.CharacterSystem
         }
 
         private void ApplyRotation()
+        {
+            if (_rotationMode == PawnRotationMode.ManualYaw)
+            {
+                ApplyManualYawRotation();
+                return;
+            }
+            ApplyMovementDirectionRotation();
+        }
+
+        private void ApplyManualYawRotation()
+        {
+            if (Mathf.Abs(_yawInput) <= 0.0001f)
+            {
+                return;
+            }
+
+            float yawDelta = _yawInput * _data.ManualYawSensitivity;
+            transform.rotation = Quaternion.Euler(0.0f, transform.eulerAngles.y + yawDelta, 0.0f);
+        }
+
+        private void ApplyMovementDirectionRotation()
         {
             if (_currentMoveIntent.sqrMagnitude <= MinMoveIntentSqrMagnitude)
             {

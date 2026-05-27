@@ -8,5 +8,7 @@ namespace Geostorm.Core.CharacterSystem
         Vector3 Position { get; }
         void SetBrain(ICharacterBrain newBrain);
         void Move(Vector3 direction);
+        void SetRotationMode(PawnRotationMode rotationMode);
+        void AddYawInput(float yawInput);
     }
 }
